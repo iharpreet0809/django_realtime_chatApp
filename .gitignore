@@ -70,7 +70,6 @@ coverage.xml
 Thumbs.db
 
 # Virtual environments
-.env
 env/
 venv/
 ENV/
