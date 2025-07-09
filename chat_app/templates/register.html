@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Django Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen py-12">
+    <div class="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-xl">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold">
+                Create a new account
+            </h2>
+        </div>
+        <form method="post" class="mt-8 space-y-6">
+            {% csrf_token %}
+            <div class="rounded-md shadow-sm -space-y-px">
+                <!-- Manually render each field for full control -->
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="sr-only">Username</label>
+                    {{ form.username }}
+                </div> <br>
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="sr-only">Email</label>
+                    {{ form.email }}
+                </div><br>
+                <div>
+                    <label for="{{ form.password.id_for_label }}" class="sr-only">Password</label>
+                    {{ form.password }}
+                </div><br>
+                <div>
+                    <label for="{{ form.password2.id_for_label }}" class="sr-only">Confirm Password</label>
+                    {{ form.password2 }}
+                </div>
+            </div>
+
+            <!-- Display form errors -->
+            {% if form.errors %}
+                <div class="text-red-500 text-sm space-y-1 text-center">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div>
+                <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:ring-offset-gray-800">
+                    Sign up
+                </button>
+            </div>
+        </form>
+        <p class="mt-2 text-center text-sm text-gray-400">
+            Already a member?
+            <a href="{% url 'login' %}" class="font-medium text-purple-400 hover:text-purple-300">
+                Sign in
+            </a>
+        </p>
+    </div>
+</body>
+</html>

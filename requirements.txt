@@ -1,0 +1,10 @@
+Django==5.0.6
+djangorestframework
+channels
+channels-redis
+daphne
+gunicorn
+mysqlclient
+python-dotenv
+drf-yasg
+django-redis

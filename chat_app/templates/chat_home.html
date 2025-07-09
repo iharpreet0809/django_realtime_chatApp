@@ -1,0 +1,304 @@
+<!-- chat/templates/chat/chat_home.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #chat-log::-webkit-scrollbar { width: 4px; }
+        #chat-log::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 20px; }
+        .chat-list-item.active { background-color: #4a5568; }
+        .modal { transition: opacity 0.25s ease; }
+    </style>
+</head>
+<body class="bg-gray-800 text-white">
+    <!-- Main App -->
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-1/3 bg-gray-900 flex flex-col">
+            <!-- Sidebar Header -->
+            <header class="p-4 border-b border-gray-700 flex justify-between items-center">
+                <div class="flex items-center">
+                    {% if user.profile.profile_picture and user.profile.profile_picture.url %}
+                        <img class="w-10 h-10 rounded-full mr-3" src="{{ user.profile.profile_picture.url }}" alt="User Profile">
+                    {% else %}
+                        <img class="w-10 h-10 rounded-full mr-3" src="https://placehold.co/40x40/7e3af2/ffffff?text=U" alt="User Profile">
+                    {% endif %}
+                    <h2 class="text-lg font-semibold">{{ user.username }}</h2>
+                </div>
+                <div>
+                    <button id="new-chat-btn" class="text-gray-400 hover:text-white mr-4" title="New Chat">
+                        <i class="fas fa-plus-circle text-xl"></i>
+                    </button>
+                    <form method="post" action="{% url 'logout' %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="text-gray-400 hover:text-white" title="Logout" style="background:none; border:none; padding:0; cursor:pointer;">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </button>
+                    </form>
+                    
+                </div>
+            </header>
+
+            <!-- Search Bar -->
+            <div class="p-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search chats..." class="w-full bg-gray-800 rounded-full py-2 px-4 pl-10 focus:outline-none">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+
+            <!-- Chat List -->
+            <div id="chat-list" class="flex-1 overflow-y-auto">
+                {% for room in chat_rooms %}
+                <div class="chat-list-item p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer flex items-center" data-room-id="{{ room.id }}">
+                    <img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/48x48/7e3af2/ffffff?text={{ room.name|first|upper }}" alt="Room Avatar">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            {% comment %} chatting user first name here  {% endcomment %}
+                            <h3 class="font-semibold">
+                                {% for participant in room.participants.all %}
+                                    {% if participant != user %}
+                                        {{ participant.first_name }}
+                                    {% endif %}
+                                {% empty %}
+                                    {{ user.username }}
+                                {% endfor %}
+                            </h3>
+                            <span class="text-xs text-gray-400">10:30 AM</span>
+                        </div>
+                        <p class="text-sm text-gray-400 truncate">Last message preview...</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p id="no-chats-placeholder" class="text-center text-gray-500 mt-10">No chats yet. Start a new one!</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div id="chat-area" class="w-2/3 flex flex-col bg-gray-800">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="flex-1 flex flex-col justify-center items-center">
+                <div class="text-center">
+                    <i class="fas fa-comments text-8xl text-gray-600"></i>
+                    <h1 class="text-3xl font-bold mt-4">Django Chat</h1>
+                    <p class="text-gray-400 mt-2">Select a chat to start messaging or add a new friend.</p>
+                </div>
+            </div>
+
+            <!-- Chat View (hidden by default) -->
+            <div id="chat-view" class="hidden flex-1 flex-col">
+                <!-- Chat Header -->
+                <header class="p-4 border-b border-gray-700 flex items-center">
+                    <img id="chat-header-img" class="w-10 h-10 rounded-full mr-3" src="" alt="Chat Avatar">
+                    <div>
+                        <h2 id="chat-header-name" class="text-lg font-semibold"></h2>
+                        <p id="chat-header-status" class="text-sm text-green-400">Online</p>
+                    </div>
+                </header>
+
+                <!-- Message Area -->
+                <div id="chat-log" class="flex-1 p-6 overflow-y-auto"></div>
+
+                <!-- Message Input -->
+                <footer class="p-4 bg-gray-900">
+                    <div class="flex items-center">
+                        <button class="text-gray-400 hover:text-white p-2"><i class="fas fa-paperclip text-xl"></i></button>
+                        <input id="chat-message-input" type="text" placeholder="Type a message..." class="flex-1 bg-gray-800 rounded-full py-3 px-6 mx-4 focus:outline-none">
+                        <button id="chat-message-submit" class="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3"><i class="fas fa-paper-plane text-xl"></i></button>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div id="new-chat-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Start a New Chat</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="start-chat-form" class="p-6">
+                <p class="text-gray-400 mb-4">Enter the email address or phone number of the user you want to chat with.</p>
+                <label for="identifier" class="sr-only">Email or Phone</label>
+                <input id="identifier" type="text" required class="w-full bg-gray-900 border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="user@example.com">
+                <div id="modal-error-message" class="text-red-500 text-sm mt-2 hidden"></div>
+                <div class="mt-6 flex justify-end">
+                    <button type="button" id="cancel-modal-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">Cancel</button>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Start Chat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{ user.username|json_script:"user-username" }}
+    {% csrf_token %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- DOM Elements ---
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const chatView = document.getElementById('chat-view');
+        const chatLog = document.getElementById('chat-log');
+        const messageInput = document.getElementById('chat-message-input');
+        const messageSubmit = document.getElementById('chat-message-submit');
+        const chatHeaderName = document.getElementById('chat-header-name');
+        const chatHeaderImg = document.getElementById('chat-header-img');
+        const chatList = document.getElementById('chat-list');
+        
+        // --- Modal Elements ---
+        const newChatModal = document.getElementById('new-chat-modal');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelModalBtn = document.getElementById('cancel-modal-btn');
+        const startChatForm = document.getElementById('start-chat-form');
+        const modalErrorMessage = document.getElementById('modal-error-message');
+
+        // --- State ---
+        let currentRoomId = null;
+        let chatSocket = null;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // --- WebSocket Functions ---
+        function connectToWebSocket(roomId) {
+            if (chatSocket) chatSocket.close();
+            chatSocket = new WebSocket(`ws://${window.location.host}/ws/chat/${roomId}/`);
+            chatSocket.onopen = () => fetchMessages(roomId);
+            chatSocket.onmessage = e => appendMessage(JSON.parse(e.data));
+            chatSocket.onclose = () => console.error('Chat socket closed unexpectedly');
+        }
+
+        // --- API Functions ---
+        async function fetchMessages(roomId) {
+            const response = await fetch(`/api/chats/${roomId}/messages/`, {
+                headers: { 'Authorization': `Token ${localStorage.getItem('authToken')}` }
+            });
+            const messages = await response.json();
+            chatLog.innerHTML = '';
+            messages.forEach(msg => appendMessage({
+                sender: msg.sender,
+                content: msg.content,
+                timestamp: msg.timestamp
+            }));
+        }
+
+        // --- UI Functions ---
+        function appendMessage(data) {
+            const currentUser = JSON.parse(document.getElementById('user-username').textContent);
+            const isMe = data.sender === currentUser;
+            const align = isMe ? 'justify-end' : 'justify-start';
+            const bgColor = isMe ? 'bg-purple-600' : 'bg-gray-700';
+            const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const messageHtml = `
+                <div class="flex ${align} mb-4">
+                    <div class="${bgColor} rounded-lg p-3 max-w-lg">
+                        <p class="text-white">${data.content || data.message}</p>
+                        <span class="text-xs text-gray-400 float-right mt-1">${time}</span>
+                    </div>
+                </div>`;
+            chatLog.innerHTML += messageHtml;
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function addRoomToChatList(room, makeActive = false) {
+            // Avoid adding duplicate rooms
+            if (document.querySelector(`.chat-list-item[data-room-id="${room.id}"]`)) return;
+
+            const otherParticipant = room.participants.find(p => p.username !== JSON.parse(document.getElementById('user-username').textContent));
+            const roomName = room.is_group_chat ? room.name : otherParticipant.username;
+
+            const roomHtml = `
+                <div class="chat-list-item p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer flex items-center" data-room-id="${room.id}">
+                    <img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/48x48/7e3af2/ffffff?text=${roomName.charAt(0).toUpperCase()}" alt="Room Avatar">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-semibold">${roomName}</h3>
+                            <span class="text-xs text-gray-400"></span>
+                        </div>
+                        <p class="text-sm text-gray-400 truncate">No messages yet.</p>
+                    </div>
+                </div>`;
+            chatList.insertAdjacentHTML('afterbegin', roomHtml);
+            document.getElementById('no-chats-placeholder')?.classList.add('hidden');
+            
+            const newRoomElement = chatList.querySelector(`[data-room-id="${room.id}"]`);
+            newRoomElement.addEventListener('click', handleRoomClick);
+
+            if (makeActive) {
+                newRoomElement.click();
+            }
+        }
+
+        function handleRoomClick() {
+            document.querySelectorAll('.chat-list-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            welcomeScreen.classList.add('hidden');
+            chatView.classList.remove('hidden');
+            chatView.classList.add('flex');
+
+            const roomName = this.querySelector('h3').textContent;
+            chatHeaderName.textContent = roomName;
+            chatHeaderImg.src = this.querySelector('img').src;
+            
+            currentRoomId = this.dataset.roomId;
+            connectToWebSocket(currentRoomId);
+        }
+
+        // --- Event Listeners ---
+        document.querySelectorAll('.chat-list-item').forEach(item => item.addEventListener('click', handleRoomClick));
+        
+        messageSubmit.addEventListener('click', () => {
+            if (messageInput.value.trim() !== '' && chatSocket) {
+                chatSocket.send(JSON.stringify({ 'type': 'chat_message', 'message': messageInput.value }));
+                messageInput.value = '';
+            }
+        });
+        
+        messageInput.addEventListener('keyup', e => { if (e.key === 'Enter') messageSubmit.click() });
+
+        // --- Modal Logic ---
+        function showModal() { newChatModal.classList.remove('hidden'); }
+        function hideModal() { newChatModal.classList.add('hidden'); modalErrorMessage.classList.add('hidden'); startChatForm.reset(); }
+
+        newChatBtn.addEventListener('click', showModal);
+        closeModalBtn.addEventListener('click', hideModal);
+        cancelModalBtn.addEventListener('click', hideModal);
+        
+        startChatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const identifier = document.getElementById('identifier').value;
+            
+            const response = await fetch('/api/start-chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                    'Authorization': `Token ${localStorage.getItem('authToken')}`
+                },
+                body: JSON.stringify({ identifier })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                addRoomToChatList(data, true);
+                hideModal();
+            } else {
+                modalErrorMessage.textContent = data.error || 'An unexpected error occurred.';
+                modalErrorMessage.classList.remove('hidden');
+            }
+        });
+    });
+    </script>
+</body>
+</html>
