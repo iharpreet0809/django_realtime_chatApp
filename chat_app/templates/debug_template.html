@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug User Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; background: #f9f9f9; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Debug User Information</h1>
+    
+    <div class="debug-box">
+        <h2>Current User:</h2>
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>First Name:</strong> "{{ user.first_name }}"</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Is Authenticated:</strong> {{ user.is_authenticated }}</p>
+        <p><strong>User ID:</strong> {{ user.id }}</p>
+    </div>
+    
+    <div class="debug-box">
+        <h2>Template Tests:</h2>
+        <p><strong>First name exists:</strong> {% if user.first_name %}YES{% else %}NO{% endif %}</p>
+        <p><strong>First name length:</strong> {{ user.first_name|length }}</p>
+        <p><strong>First letter of first name:</strong> "{{ user.first_name|first|upper }}"</p>
+        <p><strong>Username first letter:</strong> "{{ user.username|first|upper }}"</p>
+    </div>
+    
+    <div class="debug-box">
+        <h2>Chat Rooms ({{ chat_rooms|length }}):</h2>
+        {% for room in chat_rooms %}
+            <div style="border: 1px solid #ddd; margin: 5px; padding: 10px;">
+                <h3>Room: {{ room.name }} (ID: {{ room.id }})</h3>
+                <h4>Participants:</h4>
+                <ul>
+                    {% for participant in room.participants.all %}
+                        <li>
+                            <strong>Username:</strong> {{ participant.username }}, 
+                            <strong>First Name:</strong> "{{ participant.first_name|default:"EMPTY" }}",
+                            <strong>Is Current User:</strong> {% if participant == user %}YES{% else %}NO{% endif %}
+                            {% if participant != user %}
+                                <span class="success">&larr; This should show in chat list</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% empty %}
+            <p class="error">No chat rooms found.</p>
+        {% endfor %}
+    </div>
+    
+    <div class="debug-box">
+        <h2>What Should Display:</h2>
+        <p><strong>Header should show:</strong> 
+            {% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}
+        </p>
+        <p><strong>Chat list should show:</strong></p>
+        <ul>
+            {% for room in chat_rooms %}
+                {% for participant in room.participants.all %}
+                    {% if participant != user %}
+                        <li>{{ participant.first_name|default:participant.username }}</li>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <p><a href="/">Back to Chat</a></p>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Success</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; background: #f0f0f0; }
+        .success-box { background: white; padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #7e3af2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="success-box">
+        <h2>Login Successful!</h2>
+        <div class="spinner"></div>
+        <p>Setting up your session...</p>
+        <p>You will be redirected to the chat in a moment.</p>
+    </div>
+    
+    <script>
+    // Store the authentication token for WebSocket connections
+    localStorage.setItem('authToken', '{{ user_token }}');
+    
+    // Store user data
+    localStorage.setItem('userData', JSON.stringify({
+        'username': '{{ user_data.username }}',
+        'first_name': '{{ user_data.first_name }}'
+    }));
+    
+    // Redirect to chat home after a short delay
+    setTimeout(function() {
+        window.location.href = '/';
+    }, 2000);
+    </script>
+</body>
+</html>

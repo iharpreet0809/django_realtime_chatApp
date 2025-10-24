@@ -16,15 +16,30 @@ class SignUpView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = []
 
+
+#login view
 class LoginView(APIView):
     permission_classes = []
     def post(self, request):
-        username = request.data.get('username')
+        from django.contrib.auth import login
+        
+        # Support both old 'username' and new 'identifier' fields for backward compatibility
+        identifier = request.data.get('identifier') or request.data.get('username')
         password = request.data.get('password')
-        user = authenticate(username=username, password=password)
+        
+        user = authenticate(request, identifier=identifier, password=password)
         if user:
+            # Create API token
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key, 'username': user.username})
+            
+            # Also log user into Django session for template access
+            login(request, user)
+            
+            return Response({
+                'token': token.key, 
+                'username': user.username,
+                'first_name': user.first_name or user.username
+            })
         else:
             return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -45,6 +60,9 @@ class StartChatView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
         identifier = request.data.get('identifier') # Can be email or phone
         if not identifier:
             return Response({'error': 'Email or phone number is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -76,6 +94,20 @@ class StartChatView(APIView):
         room_name = f"{user1.username}_{user2.username}"
         new_room = ChatRoom.objects.create(name=room_name, is_group_chat=False)
         new_room.participants.add(user1, user2)
+        
+        # Notify both users about the new chat room via WebSocket
+        channel_layer = get_channel_layer()
+        room_data = ChatRoomSerializer(new_room).data
+        
+        # Send to presence group for all users to receive
+        async_to_sync(channel_layer.group_send)(
+            "presence",
+            {
+                "type": "new_chat_created",
+                "room_data": room_data,
+                "participants": [user1.id, user2.id]
+            }
+        )
         
         serializer = ChatRoomSerializer(new_room)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -110,3 +142,24 @@ class MessageListView(generics.ListCreateAPIView):
         room_id = self.kwargs['room_id']
         room = get_object_or_404(ChatRoom, id=room_id, participants=self.request.user)
         serializer.save(sender=self.request.user, room=room)
+
+
+class MarkMessagesSeenView(APIView):
+    """Mark all messages in a room as seen by the current user"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, room_id):
+        from .models import MessageStatus
+        room = get_object_or_404(ChatRoom, id=room_id, participants=request.user)
+        
+        # Update all message statuses for this user in this room to 'seen'
+        updated_count = MessageStatus.objects.filter(
+            message__room=room,
+            user=request.user,
+            status__in=['sent', 'delivered']
+        ).update(status='seen')
+        
+        return Response({
+            'success': True, 
+            'updated_count': updated_count
+        })

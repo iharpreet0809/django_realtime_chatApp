@@ -14,9 +14,11 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     try:
-        instance.profile.save()
+        # Only save if profile exists, don't create a new one
+        # This prevents overwriting profile data set elsewhere
+        if hasattr(instance, 'profile'):
+            # Don't call save() here as it might overwrite data
+            pass
     except Profile.DoesNotExist:
-        # This can happen during initial user creation if the signal fires
-        # before the profile is created. The create_user_profile signal
-        # will handle the creation.
+        # Only create if no profile exists
         Profile.objects.create(user=instance)

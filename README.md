@@ -21,43 +21,81 @@ A modern real-time chat application built with Django, Django Channels, and WebS
 ### Installation
 
 1. **Clone the repository**
-   ```
-   git clone 
+   ```bash
+   git clone <your-repo-url>
    cd django_realtime_chatApp
    ```
 
 2. **Create and activate a virtual environment**
-   ```
+   ```bash
    python -m venv env
-   source env/bin/activate  # On Windows: env\Scripts\activate
+   # On Windows:
+   env\Scripts\activate
+   # On Linux/Mac:
+   source env/bin/activate
    ```
 
-3. **Install dependencies**
+3. **Configure environment variables**
+   
+   Copy `.env.example` to `.env` and update the values:
+   ```bash
+   cp .env.example .env
    ```
+   
+   Edit `.env` file with your database credentials and settings.
+
+4. **Quick Setup (Recommended)**
+   ```bash
+   python setup_dev.py
+   ```
+   
+   Or manual setup:
+
+5. **Install dependencies**
+   ```bash
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables**
-
-   Copy `.env.example` to `.env` and set your secrets.
-
-5. **Apply migrations**
+6. **Setup Database**
+   
+   Make sure MySQL is running and create the database:
+   ```sql
+   CREATE DATABASE chatrca;
    ```
+
+7. **Apply migrations**
+   ```bash
+   python manage.py makemigrations
    python manage.py migrate
    ```
 
-6. **Run Redis server**
+8. **Create a superuser (optional)**
+   ```bash
+   python manage.py createsuperuser
+   ```
 
+9. **Run Redis server**
+   
    Make sure Redis is running locally (default: `localhost:6379`).
-
-7. **Run the development server**
+   ```bash
+   # On Windows (if Redis is installed):
+   redis-server
+   # On Linux/WSL:
+   sudo service redis-server start
+   # On Mac:
+   brew services start redis
    ```
-   python manage.py runserver
-   ```
 
-8. **Access the app**
+10. **Run the development server**
+    ```bash
+    python manage.py runserver
+    ```
 
-   Open [http://localhost:8000](http://localhost:8000) in your browser.
+11. **Access the app**
+    
+    - Main app: [http://localhost:8000](http://localhost:8000)
+    - Admin panel: [http://localhost:8000/admin](http://localhost:8000/admin)
+    - API documentation: [http://localhost:8000/swagger](http://localhost:8000/swagger)
 
 ### Docker (Optional)
 

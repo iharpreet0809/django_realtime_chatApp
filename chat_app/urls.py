@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     SignUpView, LoginView, ProfileView, 
-    ChatRoomListView, MessageListView, StartChatView
+    ChatRoomListView, MessageListView, StartChatView, MarkMessagesSeenView
 )
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('start-chat/', StartChatView.as_view(), name='start-chat'), # New URL
     path('chats/', ChatRoomListView.as_view(), name='chat-list'),
     path('chats/<int:room_id>/messages/', MessageListView.as_view(), name='message-list'),
+    path('chats/<int:room_id>/mark-seen/', MarkMessagesSeenView.as_view(), name='mark-seen'),
 ]

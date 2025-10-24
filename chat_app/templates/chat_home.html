@@ -1,24 +1,109 @@
-<!-- chat/templates/chat/chat_home.html -->
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Django Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        #chat-log::-webkit-scrollbar { width: 4px; }
-        #chat-log::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 20px; }
-        .chat-list-item.active { background-color: #4a5568; }
-        .modal { transition: opacity 0.25s ease; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Chat log scrollbar styling */
+        #chat-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chat-log::-webkit-scrollbar-track {
+            background: #2d3748;
+            border-radius: 10px;
+        }
+
+        #chat-log::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-radius: 10px;
+        }
+
+        #chat-log::-webkit-scrollbar-thumb:hover {
+            background-color: #718096;
+        }
+
+        /* Ensure chat log has proper height and scrolling */
+        #chat-log {
+            scroll-behavior: smooth;
+        }
+
+        .chat-list-item.active {
+            background-color: #4a5568;
+        }
+
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        
+        .unread-badge {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Message area improvements */
+        .message-container {
+            padding-bottom: 20px; /* Add space at bottom for better UX */
+        }
+
+        /* Date separator styling - WhatsApp style */
+        .date-separator {
+            margin: 16px 0;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .date-separator::before {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #374151;
+            margin-right: 12px;
+        }
+
+        .date-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #374151;
+            margin-left: 12px;
+        }
+
+        .date-separator span {
+            background-color: #374151;
+            color: #d1d5db;
+            font-size: 0.75rem;
+            font-weight: 400;
+            padding: 4px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ensure input stays at bottom */
+        #chat-message-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #7c3aed;
+        }
     </style>
 </head>
+
 <body class="bg-gray-800 text-white">
     <!-- Main App -->
     <div class="flex h-screen">
@@ -28,11 +113,26 @@
             <header class="p-4 border-b border-gray-700 flex justify-between items-center">
                 <div class="flex items-center">
                     {% if user.profile.profile_picture and user.profile.profile_picture.url %}
-                        <img class="w-10 h-10 rounded-full mr-3" src="{{ user.profile.profile_picture.url }}" alt="User Profile">
+                    <img class="w-10 h-10 rounded-full mr-3" src="{{ user.profile.profile_picture.url }}"
+                        alt="User Profile">
                     {% else %}
-                        <img class="w-10 h-10 rounded-full mr-3" src="https://placehold.co/40x40/7e3af2/ffffff?text=U" alt="User Profile">
+                    {% if user.first_name %}
+                    <img class="w-10 h-10 rounded-full mr-3"
+                        src="https://placehold.co/40x40/7e3af2/ffffff?text={{ user.first_name|first|upper }}"
+                        alt="User Profile">
+                    {% else %}
+                    <img class="w-10 h-10 rounded-full mr-3"
+                        src="https://placehold.co/40x40/7e3af2/ffffff?text={{ user.username|first|upper }}"
+                        alt="User Profile">
                     {% endif %}
-                    <h2 class="text-lg font-semibold">{{ user.username }}</h2>
+                    {% endif %}
+                    <h2 class="text-lg font-semibold">
+                        {% if user.first_name %}
+                        {{ user.first_name }}
+                        {% else %}
+                        {{ user.username }}
+                        {% endif %}
+                    </h2>
                 </div>
                 <div>
                     <button id="new-chat-btn" class="text-gray-400 hover:text-white mr-4" title="New Chat">
@@ -40,18 +140,19 @@
                     </button>
                     <form method="post" action="{% url 'logout' %}" style="display:inline;">
                         {% csrf_token %}
-                        <button type="submit" class="text-gray-400 hover:text-white" title="Logout" style="background:none; border:none; padding:0; cursor:pointer;">
+                        <button type="submit" class="text-gray-400 hover:text-white" title="Logout"
+                            style="background:none; border:none; padding:0; cursor:pointer;">
                             <i class="fas fa-sign-out-alt text-xl"></i>
                         </button>
                     </form>
-                    
                 </div>
             </header>
 
             <!-- Search Bar -->
             <div class="p-4">
                 <div class="relative">
-                    <input type="text" placeholder="Search chats..." class="w-full bg-gray-800 rounded-full py-2 px-4 pl-10 focus:outline-none">
+                    <input type="text" placeholder="Search chats..."
+                        class="w-full bg-gray-800 rounded-full py-2 px-4 pl-10 focus:outline-none">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 </div>
             </div>
@@ -59,25 +160,54 @@
             <!-- Chat List -->
             <div id="chat-list" class="flex-1 overflow-y-auto">
                 {% for room in chat_rooms %}
-                <div class="chat-list-item p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer flex items-center" data-room-id="{{ room.id }}">
-                    <img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/48x48/7e3af2/ffffff?text={{ room.name|first|upper }}" alt="Room Avatar">
+                {% for participant in room.participants.all %}
+                {% if participant != user %}
+                <div class="chat-list-item p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer flex items-center"
+                    data-room-id="{{ room.id }}">
+                    {% if participant.first_name %}
+                    <img class="w-12 h-12 rounded-full mr-4"
+                        src="https://placehold.co/48x48/7e3af2/ffffff?text={{ participant.first_name|first|upper }}"
+                        alt="Room Avatar">
+                    {% else %}
+                    <img class="w-12 h-12 rounded-full mr-4"
+                        src="https://placehold.co/48x48/7e3af2/ffffff?text={{ participant.username|first|upper }}"
+                        alt="Room Avatar">
+                    {% endif %}
                     <div class="flex-1">
                         <div class="flex justify-between items-center">
-                            {% comment %} chatting user first name here  {% endcomment %}
                             <h3 class="font-semibold">
-                                {% for participant in room.participants.all %}
-                                    {% if participant != user %}
-                                        {{ participant.first_name }}
-                                    {% endif %}
-                                {% empty %}
-                                    {{ user.username }}
-                                {% endfor %}
+                                {% if participant.first_name %}
+                                {{ participant.first_name }}
+                                {% else %}
+                                {{ participant.username }}
+                                {% endif %}
                             </h3>
-                            <span class="text-xs text-gray-400">10:30 AM</span>
+                            <span class="text-xs text-gray-400" id="room-time-{{ room.id }}">
+                                {% with room.messages.last as last_msg %}
+                                    {% if last_msg %}
+                                        {{ last_msg.timestamp|date:"H:i" }}
+                                    {% else %}
+                                        Now
+                                    {% endif %}
+                                {% endwith %}
+                            </span>
                         </div>
-                        <p class="text-sm text-gray-400 truncate">Last message preview...</p>
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-gray-400 truncate flex-1" id="room-preview-{{ room.id }}">
+                                {% with room.messages.last as last_msg %}
+                                    {% if last_msg %}
+                                        {% if last_msg.sender == user %}You: {% endif %}{{ last_msg.content|truncatechars:30 }}
+                                    {% else %}
+                                        No messages yet...
+                                    {% endif %}
+                                {% endwith %}
+                            </p>
+                            <span class="bg-purple-600 text-white text-xs rounded-full px-2 py-1 ml-2 unread-badge {% if room.unread_count == 0 %}hidden{% endif %}" id="unread-count-{{ room.id }}">{{ room.unread_count|default:0 }}</span>
+                        </div>
                     </div>
                 </div>
+                {% endif %}
+                {% endfor %}
                 {% empty %}
                 <p id="no-chats-placeholder" class="text-center text-gray-500 mt-10">No chats yet. Start a new one!</p>
                 {% endfor %}
@@ -85,7 +215,7 @@
         </div>
 
         <!-- Main Chat Area -->
-        <div id="chat-area" class="w-2/3 flex flex-col bg-gray-800">
+        <div id="chat-area" class="w-2/3 flex flex-col bg-gray-800 h-screen">
             <!-- Welcome Screen -->
             <div id="welcome-screen" class="flex-1 flex flex-col justify-center items-center">
                 <div class="text-center">
@@ -96,9 +226,9 @@
             </div>
 
             <!-- Chat View (hidden by default) -->
-            <div id="chat-view" class="hidden flex-1 flex-col">
-                <!-- Chat Header -->
-                <header class="p-4 border-b border-gray-700 flex items-center">
+            <div id="chat-view" class="hidden h-full flex flex-col">
+                <!-- Chat Header (Fixed) -->
+                <header class="flex-shrink-0 p-4 border-b border-gray-700 flex items-center">
                     <img id="chat-header-img" class="w-10 h-10 rounded-full mr-3" src="" alt="Chat Avatar">
                     <div>
                         <h2 id="chat-header-name" class="text-lg font-semibold"></h2>
@@ -106,15 +236,21 @@
                     </div>
                 </header>
 
-                <!-- Message Area -->
-                <div id="chat-log" class="flex-1 p-6 overflow-y-auto"></div>
+                <!-- Message Area (Scrollable) -->
+                <div id="chat-log" class="flex-1 p-6 overflow-y-auto min-h-0">
+                    <div class="message-container"></div>
+                </div>
 
-                <!-- Message Input -->
-                <footer class="p-4 bg-gray-900">
+                <!-- Message Input (Fixed at Bottom) -->
+                <footer class="flex-shrink-0 p-4 bg-gray-900 border-t border-gray-700">
                     <div class="flex items-center">
-                        <button class="text-gray-400 hover:text-white p-2"><i class="fas fa-paperclip text-xl"></i></button>
-                        <input id="chat-message-input" type="text" placeholder="Type a message..." class="flex-1 bg-gray-800 rounded-full py-3 px-6 mx-4 focus:outline-none">
-                        <button id="chat-message-submit" class="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3"><i class="fas fa-paper-plane text-xl"></i></button>
+                        <button class="text-gray-400 hover:text-white p-2"><i
+                                class="fas fa-paperclip text-xl"></i></button>
+                        <input id="chat-message-input" type="text" placeholder="Type a message..."
+                            class="flex-1 bg-gray-800 rounded-full py-3 px-6 mx-4 focus:outline-none">
+                        <button id="chat-message-submit"
+                            class="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3"><i
+                                class="fas fa-paper-plane text-xl"></i></button>
                     </div>
                 </footer>
             </div>
@@ -122,20 +258,27 @@
     </div>
 
     <!-- New Chat Modal -->
-    <div id="new-chat-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+    <div id="new-chat-modal"
+        class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
         <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-6 border-b border-gray-700 flex justify-between items-center">
                 <h3 class="text-xl font-semibold">Start a New Chat</h3>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             <form id="start-chat-form" class="p-6">
-                <p class="text-gray-400 mb-4">Enter the email address or phone number of the user you want to chat with.</p>
+                <p class="text-gray-400 mb-4">Enter the email address or phone number of the user you want to chat with.
+                </p>
                 <label for="identifier" class="sr-only">Email or Phone</label>
-                <input id="identifier" type="text" required class="w-full bg-gray-900 border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="user@example.com">
+                <input id="identifier" type="text" required
+                    class="w-full bg-gray-900 border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="user@example.com">
                 <div id="modal-error-message" class="text-red-500 text-sm mt-2 hidden"></div>
                 <div class="mt-6 flex justify-end">
-                    <button type="button" id="cancel-modal-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">Cancel</button>
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Start Chat</button>
+                    <button type="button" id="cancel-modal-btn"
+                        class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">Cancel</button>
+                    <button type="submit"
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Start
+                        Chat</button>
                 </div>
             </form>
         </div>
@@ -145,160 +288,517 @@
     {% csrf_token %}
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // --- DOM Elements ---
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const chatView = document.getElementById('chat-view');
-        const chatLog = document.getElementById('chat-log');
-        const messageInput = document.getElementById('chat-message-input');
-        const messageSubmit = document.getElementById('chat-message-submit');
-        const chatHeaderName = document.getElementById('chat-header-name');
-        const chatHeaderImg = document.getElementById('chat-header-img');
-        const chatList = document.getElementById('chat-list');
-        
-        // --- Modal Elements ---
-        const newChatModal = document.getElementById('new-chat-modal');
-        const newChatBtn = document.getElementById('new-chat-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const cancelModalBtn = document.getElementById('cancel-modal-btn');
-        const startChatForm = document.getElementById('start-chat-form');
-        const modalErrorMessage = document.getElementById('modal-error-message');
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- DOM Elements ---
+            const welcomeScreen = document.getElementById('welcome-screen');
+            const chatView = document.getElementById('chat-view');
+            const chatLog = document.getElementById('chat-log');
+            const messageInput = document.getElementById('chat-message-input');
+            const messageSubmit = document.getElementById('chat-message-submit');
+            const chatHeaderName = document.getElementById('chat-header-name');
+            const chatHeaderImg = document.getElementById('chat-header-img');
+            const chatList = document.getElementById('chat-list');
 
-        // --- State ---
-        let currentRoomId = null;
-        let chatSocket = null;
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            // --- Modal Elements ---
+            const newChatModal = document.getElementById('new-chat-modal');
+            const newChatBtn = document.getElementById('new-chat-btn');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelModalBtn = document.getElementById('cancel-modal-btn');
+            const startChatForm = document.getElementById('start-chat-form');
+            const modalErrorMessage = document.getElementById('modal-error-message');
 
-        // --- WebSocket Functions ---
-        function connectToWebSocket(roomId) {
-            if (chatSocket) chatSocket.close();
-            chatSocket = new WebSocket(`ws://${window.location.host}/ws/chat/${roomId}/`);
-            chatSocket.onopen = () => fetchMessages(roomId);
-            chatSocket.onmessage = e => appendMessage(JSON.parse(e.data));
-            chatSocket.onclose = () => console.error('Chat socket closed unexpectedly');
-        }
+            // --- State ---
+            let currentRoomId = null;
+            let chatSocket = null;
+            let presenceSocket = null;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        // --- API Functions ---
-        async function fetchMessages(roomId) {
-            const response = await fetch(`/api/chats/${roomId}/messages/`, {
-                headers: { 'Authorization': `Token ${localStorage.getItem('authToken')}` }
-            });
-            const messages = await response.json();
-            chatLog.innerHTML = '';
-            messages.forEach(msg => appendMessage({
-                sender: msg.sender,
-                content: msg.content,
-                timestamp: msg.timestamp
-            }));
-        }
+            // --- Date Separator Functions ---
+            function getDateSeparator(timestamp) {
+                const messageDate = new Date(timestamp);
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                // Reset time to compare only dates
+                const messageDateOnly = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+                const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+                
+                if (messageDateOnly.getTime() === todayOnly.getTime()) {
+                    return 'Today';
+                } else if (messageDateOnly.getTime() === yesterdayOnly.getTime()) {
+                    return 'Yesterday';
+                } else {
+                    // Check if it's within the last week
+                    const daysDiff = Math.floor((todayOnly - messageDateOnly) / (1000 * 60 * 60 * 24));
+                    if (daysDiff <= 7 && daysDiff > 1) {
+                        return messageDate.toLocaleDateString('en-US', { weekday: 'long' });
+                    } else {
+                        // Show date in DD-MM-YYYY format like WhatsApp
+                        const day = messageDate.getDate().toString().padStart(2, '0');
+                        const month = (messageDate.getMonth() + 1).toString().padStart(2, '0');
+                        const year = messageDate.getFullYear();
+                        return `${day}-${month}-${year}`;
+                    }
+                }
+            }
 
-        // --- UI Functions ---
-        function appendMessage(data) {
-            const currentUser = JSON.parse(document.getElementById('user-username').textContent);
-            const isMe = data.sender === currentUser;
-            const align = isMe ? 'justify-end' : 'justify-start';
-            const bgColor = isMe ? 'bg-purple-600' : 'bg-gray-700';
-            const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const messageHtml = `
-                <div class="flex ${align} mb-4">
+            function addDateSeparator(timestamp) {
+                const dateLabel = getDateSeparator(timestamp);
+                const separatorHtml = `
+                    <div class="date-separator" data-date="${dateLabel}">
+                        <span>${dateLabel}</span>
+                    </div>`;
+                
+                const messageContainer = chatLog.querySelector('.message-container') || chatLog;
+                messageContainer.innerHTML += separatorHtml;
+            }
+
+            function shouldShowDateSeparator(timestamp) {
+                const messageContainer = chatLog.querySelector('.message-container') || chatLog;
+                const currentDateLabel = getDateSeparator(timestamp);
+                
+                // Check if a separator for this date already exists
+                const existingSeparator = messageContainer.querySelector(`[data-date="${currentDateLabel}"]`);
+                return !existingSeparator;
+            }
+
+            // --- WebSocket Functions ---
+            function connectToWebSocket(roomId) {
+                if (chatSocket) chatSocket.close();
+                const token = localStorage.getItem('authToken');
+                console.log(`Connecting to WebSocket for room ${roomId}`);
+                chatSocket = new WebSocket(`ws://${window.location.host}/ws/chat/${roomId}/?token=${token}`);
+
+                chatSocket.onopen = () => {
+                    console.log(`Connected to room ${roomId}`);
+                    fetchMessages(roomId);
+                    
+                    // Additional scroll after WebSocket connection
+                    setTimeout(() => {
+                        console.log('🔄 Final scroll attempt after WebSocket connection');
+                        scrollToBottom(true);
+                    }, 1500);
+                };
+
+                chatSocket.onmessage = e => {
+                    console.log('Received message:', e.data);
+                    const data = JSON.parse(e.data);
+                    console.log('Parsed data:', data);
+
+                    if (data.type === 'chat_message' || data.sender) {
+                        appendMessage(data);
+                    } else if (data.type === 'seen_update') {
+                        // Handle seen status updates
+                        console.log('Message seen update:', data);
+                    }
+                };
+
+                chatSocket.onclose = e => {
+                    console.error('Chat socket closed:', e.code, e.reason);
+                };
+
+                chatSocket.onerror = e => {
+                    console.error('WebSocket error:', e);
+                };
+            }
+
+            function connectToPresence() {
+                const token = localStorage.getItem('authToken');
+                presenceSocket = new WebSocket(`ws://${window.location.host}/ws/presence/?token=${token}`);
+                presenceSocket.onopen = () => console.log('Presence connected');
+                presenceSocket.onmessage = e => {
+                    const data = JSON.parse(e.data);
+                    console.log('Presence message received:', data);
+                    if (data.type === 'new_chat') {
+                        console.log('Adding new chat to list:', data.room_data);
+                        addRoomToChatList(data.room_data, false);
+                        showNotification('New chat started!');
+                    } else if (data.type === 'global_message') {
+                        console.log('📬 Global message received for room:', data.room_id);
+                        // Handle messages from other rooms for unread count
+                        if (data.room_id != currentRoomId) {
+                            const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            updateChatListPreview(data.room_id, data.content, time, false);
+                            showNotification(`New message from ${data.sender}: ${data.content.substring(0, 50)}...`);
+                        }
+                    }
+                };
+                presenceSocket.onclose = () => {
+                    console.error('Presence socket closed');
+                    setTimeout(connectToPresence, 3000);
+                };
+            }
+
+            // --- API Functions ---
+            async function fetchMessages(roomId) {
+                const response = await fetch(`/api/chats/${roomId}/messages/`, {
+                    headers: { 'Authorization': `Token ${localStorage.getItem('authToken')}` }
+                });
+                const messages = await response.json();
+                const messageContainer = chatLog.querySelector('.message-container');
+                if (messageContainer) {
+                    messageContainer.innerHTML = '';
+                } else {
+                    chatLog.innerHTML = '';
+                }
+                
+                // Group messages by date and add separators
+                let lastDate = null;
+                messages.forEach(msg => {
+                    const messageDate = getDateSeparator(msg.timestamp);
+                    
+                    // Add date separator if date changed
+                    if (lastDate !== messageDate) {
+                        addDateSeparator(msg.timestamp);
+                        lastDate = messageDate;
+                    }
+                    
+                    // Add message without checking for separator again
+                    appendMessageWithoutDateCheck({
+                        sender: msg.sender,
+                        content: msg.content,
+                        timestamp: msg.timestamp
+                    });
+                });
+                
+                // AGGRESSIVE scroll to bottom when loading chat history
+                scrollToBottom(true); // Immediate scroll
+                
+                // Additional scrolls to handle any rendering delays
+                setTimeout(() => scrollToBottom(true), 100);
+                setTimeout(() => scrollToBottom(true), 300);
+                setTimeout(() => scrollToBottom(true), 600);
+                setTimeout(() => scrollToBottom(true), 1000);
+                
+                // Observer to scroll when content changes
+                const observer = new MutationObserver(() => {
+                    scrollToBottom(true);
+                });
+                observer.observe(chatLog, { childList: true, subtree: true });
+                
+                // Disconnect observer after 2 seconds
+                setTimeout(() => observer.disconnect(), 2000);
+            }
+
+            function appendMessageWithoutDateCheck(data) {
+                const currentUser = JSON.parse(document.getElementById('user-username').textContent);
+                const isMe = data.sender === currentUser;
+                const align = isMe ? 'justify-end' : 'justify-start';
+                const bgColor = isMe ? 'bg-purple-600' : 'bg-gray-700';
+                const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const messageContent = data.content || data.message || '';
+
+                const messageHtml = `
+                <div class="flex ${align} mb-4" data-timestamp="${data.timestamp}">
                     <div class="${bgColor} rounded-lg p-3 max-w-lg">
-                        <p class="text-white">${data.content || data.message}</p>
+                        <p class="text-white">${messageContent}</p>
                         <span class="text-xs text-gray-400 float-right mt-1">${time}</span>
                     </div>
                 </div>`;
-            chatLog.innerHTML += messageHtml;
-            chatLog.scrollTop = chatLog.scrollHeight;
-        }
+                const messageContainer = chatLog.querySelector('.message-container') || chatLog;
+                messageContainer.innerHTML += messageHtml;
+            }
 
-        function addRoomToChatList(room, makeActive = false) {
-            // Avoid adding duplicate rooms
-            if (document.querySelector(`.chat-list-item[data-room-id="${room.id}"]`)) return;
+            // --- UI Functions ---
+            function scrollToBottom(force = false) {
+                if (!chatLog) return;
+                
+                if (force) {
+                    // ULTRA AGGRESSIVE scrolling for chat loading
+                    const doScroll = () => {
+                        // Method 1: Direct scrollTop
+                        chatLog.scrollTop = chatLog.scrollHeight;
+                        
+                        // Method 2: ScrollIntoView on last message
+                        const lastMessage = chatLog.querySelector('.message-container > div:last-child, #chat-log > div:last-child');
+                        if (lastMessage) {
+                            lastMessage.scrollIntoView({ behavior: 'instant', block: 'end' });
+                        }
+                        
+                        console.log(`📍 FORCE scrolled to: ${chatLog.scrollTop}/${chatLog.scrollHeight}`);
+                    };
+                    
+                    // Multiple immediate attempts
+                    doScroll();
+                    requestAnimationFrame(doScroll);
+                    setTimeout(doScroll, 1);
+                    setTimeout(doScroll, 10);
+                    setTimeout(doScroll, 25);
+                    setTimeout(doScroll, 50);
+                    setTimeout(doScroll, 100);
+                    setTimeout(doScroll, 200);
+                } else {
+                    // Smart scrolling for new messages
+                    const isAtBottom = chatLog.scrollTop >= (chatLog.scrollHeight - chatLog.clientHeight - 100);
+                    if (isAtBottom) {
+                        requestAnimationFrame(() => {
+                            chatLog.scrollTop = chatLog.scrollHeight;
+                        });
+                    }
+                }
+            }
 
-            const otherParticipant = room.participants.find(p => p.username !== JSON.parse(document.getElementById('user-username').textContent));
-            const roomName = room.is_group_chat ? room.name : otherParticipant.username;
+            function appendMessage(data) {
+                const currentUser = JSON.parse(document.getElementById('user-username').textContent);
+                const isMe = data.sender === currentUser;
+                const align = isMe ? 'justify-end' : 'justify-start';
+                const bgColor = isMe ? 'bg-purple-600' : 'bg-gray-700';
+                const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const messageContent = data.content || data.message || '';
 
-            const roomHtml = `
+                console.log(`Message from ${data.sender}, current user: ${currentUser}, isMe: ${isMe}`);
+
+                // Add date separator if needed
+                if (shouldShowDateSeparator(data.timestamp)) {
+                    addDateSeparator(data.timestamp);
+                }
+
+                const messageHtml = `
+                <div class="flex ${align} mb-4" data-timestamp="${data.timestamp}">
+                    <div class="${bgColor} rounded-lg p-3 max-w-lg">
+                        <p class="text-white">${messageContent}</p>
+                        <span class="text-xs text-gray-400 float-right mt-1">${time}</span>
+                    </div>
+                </div>`;
+                const messageContainer = chatLog.querySelector('.message-container') || chatLog;
+                messageContainer.innerHTML += messageHtml;
+                
+                // Smooth scroll to bottom for new messages
+                scrollToBottom(false); // Only scroll if user is near bottom
+                
+                // Update chat list preview and timestamp
+                updateChatListPreview(currentRoomId, messageContent, time, isMe);
+            }
+
+            function updateChatListPreview(roomId, content, time, isMe) {
+                const previewElement = document.getElementById(`room-preview-${roomId}`);
+                const timeElement = document.getElementById(`room-time-${roomId}`);
+                
+                console.log(`📝 Updating preview for room ${roomId}: "${content}" (isMe: ${isMe})`);
+                
+                if (previewElement) {
+                    const prefix = isMe ? 'You: ' : '';
+                    const truncatedContent = content.length > 30 ? content.substring(0, 30) + '...' : content;
+                    previewElement.textContent = prefix + truncatedContent;
+                }
+                
+                if (timeElement) {
+                    timeElement.textContent = time;
+                }
+                
+                // If this is not the current user's message and not the active chat, show unread count
+                if (!isMe && currentRoomId != roomId) {
+                    console.log(`📊 Updating unread count for room ${roomId}`);
+                    updateUnreadCount(roomId);
+                    
+                    // Move this chat to the top of the list
+                    moveRoomToTop(roomId);
+                }
+            }
+
+            function updateUnreadCount(roomId) {
+                const unreadElement = document.getElementById(`unread-count-${roomId}`);
+                if (unreadElement) {
+                    let count = parseInt(unreadElement.textContent) || 0;
+                    count++;
+                    unreadElement.textContent = count;
+                    unreadElement.classList.remove('hidden');
+                }
+            }
+
+            function clearUnreadCount(roomId) {
+                const unreadElement = document.getElementById(`unread-count-${roomId}`);
+                if (unreadElement) {
+                    unreadElement.textContent = '0';
+                    unreadElement.classList.add('hidden');
+                }
+            }
+
+            function moveRoomToTop(roomId) {
+                const roomElement = document.querySelector(`[data-room-id="${roomId}"]`);
+                if (roomElement && chatList) {
+                    // Remove from current position and add to top
+                    roomElement.remove();
+                    chatList.insertAdjacentElement('afterbegin', roomElement);
+                }
+            }
+
+            async function markMessagesAsSeen(roomId) {
+                try {
+                    await fetch(`/api/chats/${roomId}/mark-seen/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Token ${localStorage.getItem('authToken')}`,
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    console.log(`✅ Marked messages as seen for room ${roomId}`);
+                } catch (error) {
+                    console.error('Error marking messages as seen:', error);
+                }
+            }
+
+            function showNotification(message) {
+                // Simple notification - you can enhance this
+                if (Notification.permission === 'granted') {
+                    new Notification(message);
+                } else {
+                    console.log('Notification:', message);
+                }
+            }
+
+            async function refreshChatList() {
+                try {
+                    const response = await fetch('/api/chats/', {
+                        headers: { 'Authorization': `Token ${localStorage.getItem('authToken')}` }
+                    });
+                    const rooms = await response.json();
+
+                    // Add any new rooms that aren't already in the list
+                    rooms.forEach(room => {
+                        if (!document.querySelector(`.chat-list-item[data-room-id="${room.id}"]`)) {
+                            addRoomToChatList(room, false);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error refreshing chat list:', error);
+                }
+            }
+
+            function addRoomToChatList(room, makeActive = false) {
+                if (document.querySelector(`.chat-list-item[data-room-id="${room.id}"]`)) {
+                    console.log('Room already exists in list');
+                    return;
+                }
+
+                const currentUser = JSON.parse(document.getElementById('user-username').textContent);
+                const otherParticipant = room.participants.find(p => p.username !== currentUser);
+
+                let roomName, avatarText;
+                if (room.is_group_chat) {
+                    roomName = room.name;
+                    avatarText = room.name.charAt(0).toUpperCase();
+                } else if (otherParticipant) {
+                    roomName = otherParticipant.first_name || otherParticipant.username;
+                    avatarText = roomName.charAt(0).toUpperCase();
+                } else {
+                    roomName = 'Unknown User';
+                    avatarText = 'U';
+                }
+
+                console.log('Adding room to chat list:', roomName, 'Room ID:', room.id);
+
+                const roomHtml = `
                 <div class="chat-list-item p-4 border-b border-gray-700 hover:bg-gray-700 cursor-pointer flex items-center" data-room-id="${room.id}">
-                    <img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/48x48/7e3af2/ffffff?text=${roomName.charAt(0).toUpperCase()}" alt="Room Avatar">
+                    <img class="w-12 h-12 rounded-full mr-4" src="https://placehold.co/48x48/7e3af2/ffffff?text=${avatarText}" alt="Room Avatar">
                     <div class="flex-1">
                         <div class="flex justify-between items-center">
                             <h3 class="font-semibold">${roomName}</h3>
-                            <span class="text-xs text-gray-400"></span>
+                            <span class="text-xs text-gray-400" id="room-time-${room.id}">Now</span>
                         </div>
-                        <p class="text-sm text-gray-400 truncate">No messages yet.</p>
+                        <div class="flex justify-between items-center">
+                            <p class="text-sm text-gray-400 truncate flex-1" id="room-preview-${room.id}">No messages yet...</p>
+                            <span class="bg-purple-600 text-white text-xs rounded-full px-2 py-1 ml-2 hidden unread-badge" id="unread-count-${room.id}">0</span>
+                        </div>
                     </div>
                 </div>`;
-            chatList.insertAdjacentHTML('afterbegin', roomHtml);
-            document.getElementById('no-chats-placeholder')?.classList.add('hidden');
-            
-            const newRoomElement = chatList.querySelector(`[data-room-id="${room.id}"]`);
-            newRoomElement.addEventListener('click', handleRoomClick);
+                chatList.insertAdjacentHTML('afterbegin', roomHtml);
+                document.getElementById('no-chats-placeholder')?.classList.add('hidden');
 
-            if (makeActive) {
-                newRoomElement.click();
+                const newRoomElement = chatList.querySelector(`[data-room-id="${room.id}"]`);
+                newRoomElement.addEventListener('click', handleRoomClick);
+
+                if (makeActive) {
+                    newRoomElement.click();
+                }
             }
-        }
 
-        function handleRoomClick() {
-            document.querySelectorAll('.chat-list-item').forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
-            welcomeScreen.classList.add('hidden');
-            chatView.classList.remove('hidden');
-            chatView.classList.add('flex');
+            function handleRoomClick() {
+                document.querySelectorAll('.chat-list-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                welcomeScreen.classList.add('hidden');
+                chatView.classList.remove('hidden');
+                chatView.classList.add('flex');
 
-            const roomName = this.querySelector('h3').textContent;
-            chatHeaderName.textContent = roomName;
-            chatHeaderImg.src = this.querySelector('img').src;
-            
-            currentRoomId = this.dataset.roomId;
-            connectToWebSocket(currentRoomId);
-        }
+                const roomName = this.querySelector('h3').textContent;
+                chatHeaderName.textContent = roomName;
+                chatHeaderImg.src = this.querySelector('img').src;
 
-        // --- Event Listeners ---
-        document.querySelectorAll('.chat-list-item').forEach(item => item.addEventListener('click', handleRoomClick));
-        
-        messageSubmit.addEventListener('click', () => {
-            if (messageInput.value.trim() !== '' && chatSocket) {
-                chatSocket.send(JSON.stringify({ 'type': 'chat_message', 'message': messageInput.value }));
-                messageInput.value = '';
+                currentRoomId = this.dataset.roomId;
+                
+                // Clear unread count when opening chat
+                clearUnreadCount(currentRoomId);
+                
+                // Mark messages as seen
+                markMessagesAsSeen(currentRoomId);
+                
+                connectToWebSocket(currentRoomId);
             }
-        });
-        
-        messageInput.addEventListener('keyup', e => { if (e.key === 'Enter') messageSubmit.click() });
 
-        // --- Modal Logic ---
-        function showModal() { newChatModal.classList.remove('hidden'); }
-        function hideModal() { newChatModal.classList.add('hidden'); modalErrorMessage.classList.add('hidden'); startChatForm.reset(); }
+            // --- Event Listeners ---
+            document.querySelectorAll('.chat-list-item').forEach(item => item.addEventListener('click', handleRoomClick));
 
-        newChatBtn.addEventListener('click', showModal);
-        closeModalBtn.addEventListener('click', hideModal);
-        cancelModalBtn.addEventListener('click', hideModal);
-        
-        startChatForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const identifier = document.getElementById('identifier').value;
-            
-            const response = await fetch('/api/start-chat/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'Authorization': `Token ${localStorage.getItem('authToken')}`
-                },
-                body: JSON.stringify({ identifier })
+            messageSubmit.addEventListener('click', () => {
+                if (messageInput.value.trim() !== '' && chatSocket) {
+                    chatSocket.send(JSON.stringify({ 'type': 'chat_message', 'message': messageInput.value }));
+                    messageInput.value = '';
+                }
             });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                addRoomToChatList(data, true);
-                hideModal();
+
+            messageInput.addEventListener('keyup', e => { if (e.key === 'Enter') messageSubmit.click() });
+
+            // --- Modal Logic ---
+            function showModal() { newChatModal.classList.remove('hidden'); }
+            function hideModal() { newChatModal.classList.add('hidden'); modalErrorMessage.classList.add('hidden'); startChatForm.reset(); }
+
+            newChatBtn.addEventListener('click', showModal);
+            closeModalBtn.addEventListener('click', hideModal);
+            cancelModalBtn.addEventListener('click', hideModal);
+
+            startChatForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const identifier = document.getElementById('identifier').value;
+
+                const response = await fetch('/api/start-chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'Authorization': `Token ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ identifier })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addRoomToChatList(data, true);
+                    hideModal();
+                } else {
+                    modalErrorMessage.textContent = data.error || 'An unexpected error occurred.';
+                    modalErrorMessage.classList.remove('hidden');
+                }
+            });
+
+            if (!localStorage.getItem('authToken')) {
+                window.location.href = '/login/';
             } else {
-                modalErrorMessage.textContent = data.error || 'An unexpected error occurred.';
-                modalErrorMessage.classList.remove('hidden');
+                // Request notification permission
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+
+                // Connect to presence WebSocket for real-time updates
+                connectToPresence();
+
+                // Refresh chat list every 10 seconds as backup
+                setInterval(refreshChatList, 10000);
             }
         });
-    });
     </script>
 </body>
+
 </html>

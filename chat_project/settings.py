@@ -12,7 +12,7 @@ load_dotenv()
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev')
 
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,yourdomain.com').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,iharpreet.com').split(',')
 
 
 # Application definition
@@ -72,13 +72,13 @@ ASGI_APPLICATION = 'chat_project.asgi.application'
 # Database
 # [https://docs.djangoproject.com/en/5.0/ref/settings/#databases](https://docs.djangoproject.com/en/5.0/ref/settings/#databases)
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
-print(DEBUG)
+print(DEBUG, " DEGBUGGGGG")
 # Conditional database configuration based on DEBUG setting
 if DEBUG:  # for local development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'chat_db',
+            'NAME': 'chatrca',
             'USER': 'root',
             'PASSWORD': 'root',
             'HOST': 'localhost',
@@ -131,14 +131,19 @@ LOGIN_REDIRECT_URL = '/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Channels configuration
+REDIS_HOST = os.environ.get("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+print("Using Redis at:", f"{REDIS_HOST}:{REDIS_PORT}")
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(os.environ.get('REDIS_HOST', '127.0.0.1'), int(os.environ.get('REDIS_PORT', 6379)))],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
+
 
 # REST Framework configuration
 REST_FRAMEWORK = {
@@ -153,13 +158,30 @@ REST_FRAMEWORK = {
 # Custom User Model not used, but if you had one, it would be here:
 # AUTH_USER_MODEL = 'chat_app.User'
 
+# Custom Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'chat_app.authentication.FlexibleAuthBackend',  # Custom flexible login
+    'django.contrib.auth.backends.ModelBackend',   # Default fallback
+]
+
 # Caching for user presence (optional but recommended)
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{os.environ.get('REDIS_HOST', '127.0.0.1')}:{os.environ.get('REDIS_PORT', '127.0.0.1:6379')}/1",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     }
 }
+
+# Security settings for production
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True

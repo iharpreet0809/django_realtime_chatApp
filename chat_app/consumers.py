@@ -13,17 +13,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f'chat_{self.room_id}'
         self.user = self.scope['user']
 
+        print(f"🔌 WebSocket connection attempt - User: {self.user} (ID: {getattr(self.user, 'id', 'None')}), Room: {self.room_id}")
+
         if not self.user.is_authenticated:
+            print("❌ User not authenticated, closing connection")
             await self.close()
             return
 
         self.room = await self.get_room()
         if self.room is None:
+            print(f"❌ Room {self.room_id} not found or user {self.user.username} not participant")
             await self.close(code=4001)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
+        print(f"✅ User {self.user.username} connected to room {self.room_id} (group: {self.room_group_name})")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
@@ -34,6 +39,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if message_type == 'chat_message':
             message = await self.save_message(data)
+            # Broadcast to all users in the room
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -44,9 +50,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'content': message.content,
                         'image': message.image.url if message.image else None,
                         'timestamp': message.timestamp.isoformat(),
+                        'room_id': str(self.room_id),
                     }
                 }
             )
+            
+            # Also send global notification to all participants via presence
+            participants = await self.get_room_participants()
+            for participant in participants:
+                if participant.id != self.user.id:  # Don't notify sender
+                    await self.channel_layer.group_send(
+                        "presence",
+                        {
+                            'type': 'global_message_notification',
+                            'target_user_id': participant.id,
+                            'room_id': str(self.room_id),
+                            'sender': message.sender.username,
+                            'content': message.content,
+                            'timestamp': message.timestamp.isoformat(),
+                        }
+                    )
+            
+            print(f"📤 Message sent to group {self.room_group_name}: '{message.content}' from {self.user.username}")
         elif message_type == 'message_seen':
             # This is triggered when a user opens a chat and sees messages
             updated_status = await self.mark_message_as_seen(data['message_id'])
@@ -63,7 +88,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # --- Broadcast Handlers ---
     async def broadcast_message(self, event):
-        await self.send(text_data=json.dumps(event['message']))
+        message_data = event['message']
+        message_data['type'] = 'chat_message'  # Add type for frontend handling
+        await self.send(text_data=json.dumps(message_data))
+        print(f"📡 Broadcasting message to {self.user.username}: {message_data.get('content', 'No content')}")
 
     async def broadcast_seen_status(self, event):
         await self.send(text_data=json.dumps({
@@ -80,6 +108,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return ChatRoom.objects.get(id=self.room_id, participants=self.user)
         except ChatRoom.DoesNotExist:
             return None
+
+    @database_sync_to_async
+    def get_room_participants(self):
+        try:
+            room = ChatRoom.objects.get(id=self.room_id)
+            return list(room.participants.all())
+        except ChatRoom.DoesNotExist:
+            return []
 
     @database_sync_to_async
     def save_message(self, data):
@@ -127,23 +163,68 @@ class PresenceConsumer(AsyncWebsocketConsumer):
         self.group_name = "presence"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        await self.update_status('Available')
+        payload = await self.update_status('Available')
+        if payload:
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "user_status_update",
+                    "payload": payload
+                }
+            )
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
-        await self.update_status('Offline')
+        payload = await self.update_status('Offline')
+        if payload:
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "user_status_update",
+                    "payload": payload
+                }
+            )
 
     async def receive(self, text_data):
         data = json.loads(text_data)
         status = data.get('status')
         if status in [s[0] for s in Profile.STATUS_CHOICES]:
-            await self.update_status(status)
+            payload = await self.update_status(status)
+            if payload:
+                await self.channel_layer.group_send(
+                    self.group_name,
+                    {
+                        "type": "user_status_update",
+                        "payload": payload
+                    }
+                )
 
     async def user_status_update(self, event):
         await self.send(text_data=json.dumps({
             'type': 'presence',
             'payload': event['payload']
         }))
+    
+    async def new_chat_created(self, event):
+        # Send to users who are participants in the new chat
+        if self.user.id in event['participants']:
+            await self.send(text_data=json.dumps({
+                'type': 'new_chat',
+                'room_data': event['room_data']
+            }))
+            print(f"Sent new chat notification to {self.user.username}")
+
+    async def global_message_notification(self, event):
+        # Send global message notification to specific user
+        if self.user.id == event['target_user_id']:
+            await self.send(text_data=json.dumps({
+                'type': 'global_message',
+                'room_id': event['room_id'],
+                'sender': event['sender'],
+                'content': event['content'],
+                'timestamp': event['timestamp']
+            }))
+            print(f"📬 Sent global message notification to {self.user.username} for room {event['room_id']}")
 
     @database_sync_to_async
     def update_status(self, status):
@@ -159,10 +240,5 @@ class PresenceConsumer(AsyncWebsocketConsumer):
             "last_seen": profile.last_seen.isoformat()
         }
 
-        self.channel_layer.group_send(
-            self.group_name,
-            {
-                "type": "user.status.update",
-                "payload": payload
-            }
-        )
+        # Return payload for async group_send
+        return payload
